@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-typedef float my_float_t;
+typedef double my_float_t;
 typedef struct my_matrix_t {
   my_float_t* matrix_buf;
   size_t x_dim_size;

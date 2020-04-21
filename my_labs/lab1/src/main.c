@@ -71,7 +71,7 @@ int main(int argc, const char* argv[]) {
   return (EXIT_SUCCESS);
 }
 
-void swap_my_matrix_t(my_matrix_t** restrict a, my_matrix_t** restrict b) {
+void swap_my_matrix_t(my_matrix_t** a, my_matrix_t** b) {
   my_matrix_t** tmp_ptr = a;
   *a = *b;
   *b = *tmp_ptr;
@@ -133,6 +133,33 @@ my_matrix_t* compute_po(my_matrix_t* po_matrix,
 
   return po_matrix;
 }
+my_float_t sqr_hx;
+my_float_t sqr_hy;
+my_float_t sum_of_sqr_h;
+my_float_t first_multiplier;
+my_float_t second_multiplier;
+my_float_t third_multiplier;
+my_float_t fourth_multiplier;
+my_float_t compute_function_in_point(const my_matrix_t* results_matrix,
+                                     const my_matrix_t* po_matrix,
+                                     const uint32_t i,
+                                     const uint32_t j) {
+  return first_multiplier *
+         (second_multiplier * (get_matrix_value(results_matrix, i, j - 1) +
+                               get_matrix_value(results_matrix, i, j + 1)) +
+          third_multiplier * (get_matrix_value(results_matrix, i - 1, j) +
+                              get_matrix_value(results_matrix, i + 1, j)) +
+          fourth_multiplier * (get_matrix_value(results_matrix, i - 1, j - 1) +
+                               get_matrix_value(results_matrix, i - 1, j + 1) +
+                               get_matrix_value(results_matrix, i + 1, j - 1) +
+                               get_matrix_value(results_matrix, i + 1, j + 1)) +
+          2. * get_matrix_value(po_matrix, i, j) +
+          0.25 * (get_matrix_value(po_matrix, i - 1, j) +
+                  get_matrix_value(po_matrix, i + 1, j) +
+                  get_matrix_value(po_matrix, i, j - 1) +
+                  get_matrix_value(po_matrix, i, j + 1)));
+}
+
 my_matrix_t* compute_results(my_matrix_t* results_matrix,
                              my_matrix_t* temp_matrix,
                              const my_matrix_t* po_matrix,
@@ -141,48 +168,35 @@ my_matrix_t* compute_results(my_matrix_t* results_matrix,
 #ifdef DEBUG_MODE
   FILE* delta_output_file = fopen(DELTA_OUTPUT_FILE, "w");
 #endif
-  const my_float_t sqr_hx = mod_area.hx * mod_area.hx;
-  const my_float_t sqr_hy = mod_area.hy * mod_area.hy;
-  const my_float_t sum_of_sqr_h = 1 / sqr_hx + 1 / sqr_hy;
-  const my_float_t first_multiplier = 0.2 / sum_of_sqr_h;
-  const my_float_t second_multiplier = (2.5 / sqr_hx - 0.5 / sqr_hy);
-  const my_float_t third_multiplier = (2.5 / sqr_hy - 0.5 / sqr_hx);
-  const my_float_t fourth_multiplier = 0.25 * (sum_of_sqr_h);
+  sqr_hx = mod_area.hx * mod_area.hx;
+  sqr_hy = mod_area.hy * mod_area.hy;
+  sum_of_sqr_h = 1 / sqr_hx + 1 / sqr_hy;
+  first_multiplier = 0.2 / sum_of_sqr_h;
+  second_multiplier = (2.5 / sqr_hx - 0.5 / sqr_hy);
+  third_multiplier = (2.5 / sqr_hy - 0.5 / sqr_hx);
+  fourth_multiplier = 0.25 * (sum_of_sqr_h);
+#ifdef DEBUG_MODE
   my_float_t max_delta = .0;
   my_float_t temp_delta = .0;
+#endif
   for (size_t n = 1; n < number_of_steps; ++n) {
     for (size_t i = 1; i < mod_area.max_i; ++i) {
       for (size_t j = 1; j < mod_area.max_j; ++j) {
         set_matrix_value(
             temp_matrix, i, j,
-            first_multiplier *
-                (second_multiplier *
-                     (get_matrix_value(results_matrix, i, j - 1) +
-                      get_matrix_value(results_matrix, i, j + 1)) +
-                 third_multiplier *
-                     (get_matrix_value(results_matrix, i - 1, j) +
-                      get_matrix_value(results_matrix, i + 1, j)) +
-                 fourth_multiplier *
-                     (get_matrix_value(results_matrix, i - 1, j - 1) +
-                      get_matrix_value(results_matrix, i - 1, j + 1) +
-                      get_matrix_value(results_matrix, i + 1, j - 1) +
-                      get_matrix_value(results_matrix, i + 1, j + 1)) +
-                 2. * get_matrix_value(po_matrix, i, j) +
-                 0.25 * (get_matrix_value(po_matrix, i - 1, j) +
-                         get_matrix_value(po_matrix, i + 1, j) +
-                         get_matrix_value(po_matrix, i, j - 1) +
-                         get_matrix_value(po_matrix, i, j + 1))));
-
+            compute_function_in_point(results_matrix, po_matrix, i, j));
+#ifdef DEBUG_MODE
         temp_delta = fabs(get_matrix_value(temp_matrix, i, j) -
                           get_matrix_value(results_matrix, i, j));
         max_delta = fmax(max_delta, temp_delta);
+#endif
       }
     }
     swap_my_matrix_t(&results_matrix, &temp_matrix);
 #ifdef DEBUG_MODE
     fprintf(delta_output_file, "Step:%zu, delta:%.7f\n", n, max_delta);
-#endif
     max_delta = -0.1f;
+#endif
   }
 #ifdef DEBUG_MODE
   fclose(delta_output_file);
