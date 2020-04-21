@@ -2,8 +2,8 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-
 #include "my_matrix.h"
+#include "inline_function.h"
 #define DELTA_OUTPUT_FILE "delta_file.out"
 #define RESULTS_FILE "results_matrix.bin"
 #define BEGIN_X 0.0f
@@ -140,7 +140,7 @@ my_float_t first_multiplier;
 my_float_t second_multiplier;
 my_float_t third_multiplier;
 my_float_t fourth_multiplier;
-my_float_t compute_function_in_point(const my_matrix_t* results_matrix,
+inline my_float_t __attribute__((__always_inline__)) compute_function_in_point(const my_matrix_t* results_matrix,
                                      const my_matrix_t* po_matrix,
                                      const uint32_t i,
                                      const uint32_t j) {
