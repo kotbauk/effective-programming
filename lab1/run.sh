@@ -60,6 +60,7 @@ if [[ $PROFILE_RUN == true ]]; then
 	echo "Perf run: collecting $PERF_EVENT"
 	echo "Grid: ${NUMBER_X_POINT}x${NUMBER_Y_POINT} Steps:$STEPS"
 	perf record -e $PERF_EVENT ../$EXE $NUMBER_X_POINT $NUMBER_Y_POINT $STEPS
+	perf stat -d -d -d -B -e $PERF_EVENT ../$EXE $NUMBER_X_POINT $NUMBER_Y_POINT $STEPS
 fi
 
 
