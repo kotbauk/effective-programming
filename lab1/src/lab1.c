@@ -4,18 +4,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <x86intrin.h>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
 
-#ifdef _WIN32
-#include <intrin.h>
-#else
-#include <x86intrin.h>
-#endif
-
-const char OUTPUT_FILE[] = "./results.bin";
+const char OUTPUT_FILE[] = "results.bin";
 
 typedef float float_t;
 float_t tau = 0.01;
@@ -25,26 +20,27 @@ const float_t YA = 0.0f;
 const float_t YB = 4.0f;
 const float_t f0 = 1.0f;
 const float_t t0 = 1.5f;
-const float_t gammaSqr = 16.0f;
-const float_t SX = 1.;
+const float_t gamma = 0.25;
+const uint32_t SX = 1;
 const float_t twoPiF0 = M_PI * 2 * f0;
+const float_t t0twoPiF0 = t0 * twoPiF0;
+const float_t t0twoPi = t0 * 2 * M_PI;
 
-void find_min_max(float_t** U, int ny, int nx);
-float_t max(float_t a, float_t b);
-float_t mix(float_t a, float_t b);
-float_t sqr(float_t a);
-
-float_t source_function_coord(int i, int j, int n, const float_t SY);
 float_t** create(int ny, int nx);
 float_t** calc_P(int ny, int nx);
+float_t sqr(const float_t a);
 int main(int argc, const char* argv[]) {
   const uint32_t NX = atoi(argv[1]);
   const uint32_t NY = atoi(argv[2]);
   const uint32_t NT = atoi(argv[3]);
-  const float_t SY = NY / 2.;
+  const uint32_t SY = NY / 2;
 
   const float_t HXdeg2mul2 = 2 * sqr((XB - XA) / (NX - 1));
   const float_t HYdeg2mul2 = 2 * sqr((YB - YA) / (NY - 1));
+
+#ifdef DEBUG
+  FILE* max_u_file = fopen("max_u_file", "wb");
+#endif
 
   if (NX > 1000 || NY > 1000) {
     tau = 0.001;
@@ -56,16 +52,15 @@ int main(int argc, const char* argv[]) {
   float_t** uMinusOne = create(NY, NX);
   float_t** uPlusOne = create(NY, NX);
   float_t** P = calc_P(NY, NX);
-  unsigned long long before = __rdtsc();
-#ifdef DEBUG_MODE
-  printf("before:%lld\n", before);
+
+#ifdef DEBUG
+  float_t temp_max = -0.1;
 #endif
+  const float_t tautwoPiF0 = tau * t0twoPiF0;
+  float_t arg = -tautwoPiF0 - t0twoPi;
   for (int n = 0; n < NT; n++) {
     for (int i = 1; i < NX - 2; i++) {
       for (int j = 1; j < NY - 2; j++) {
-        float_t fnij =
-            source_function_coord(i, j, n, SY);  //вынести массив одномерный
-
         float_t U1 = U[i][j + 1] - U[i][j];
         float_t P1 = P[i - 1][j] + P[i][j];
 
@@ -83,72 +78,46 @@ int main(int argc, const char* argv[]) {
         float_t second = (U3 * P3 + U4 * P4) / HYdeg2mul2;
 
         uPlusOne[i][j] =
-            2 * U[i][j] - uMinusOne[i][j] + tauSqr * (fnij + first + second);
+            2 * U[i][j] - uMinusOne[i][j] + tauSqr * (first + second);
+#ifdef DEBUG
+        temp_max = fmax(temp_max, fabs(U[i][j]));
+#endif
       }
     }
+
+    arg += tautwoPiF0;
+    uPlusOne[SY][SX] += tauSqr * expf(-sqr(arg * gamma)) * sinf(arg);
 
     float_t** t = uMinusOne;
     uMinusOne = U;
     U = uPlusOne;
     uPlusOne = t;
-#ifdef DEBUG_MODE
-    printf("\nstep:%d\\%u", n, NT);
-    fflush(0);
+#ifdef DEBUG
+    fprintf(max_u_file, "\nStep:%d\\%u Max: %f", n, NT, temp_max);
 #endif
-    find_min_max(U, NY, NX);
   }
-  unsigned long long after = __rdtsc();
-  printf("\n");
 
-  printf("nanoseconds :%f\n", (after - before) / 2.4f);
-
-  FILE* output = NULL;
-
-  output = fopen(OUTPUT_FILE, "wb");
+#ifdef DEBUG
+  FILE* output = fopen(OUTPUT_FILE, "wb");
   if (output == NULL) {
     printf("Error opening file");
     return (EXIT_FAILURE);
   }
 
   for (int i = 0; i < NY; ++i) {
-    size_t i1 = fwrite(U[i], sizeof(float_t), NX, output);
+    fwrite(U[i], sizeof(float_t), NX, output);
   }
 
+  fclose(output);
+#endif
+#ifdef DEBUG
+  fclose(max_u_file);
+#endif
   return 0;
 }
 
-float_t max(float_t a, float_t b) {
-  return a > b ? a : b;
-}
-
-float_t min(float_t a, float_t b) {
-  return a < b ? a : b;
-}
-
-void find_min_max(float_t** U, int ny, int nx) {
-  float_t mn = 10000;
-  float_t mx = -10000;
-  for (int i = 0; i < ny; ++i) {
-    for (int j = 0; j < nx; ++j) {
-      mn = min(mn, U[i][j]);
-      mx = max(mx, U[i][j]);
-    }
-  }
-#ifdef DEBUG_MODE
-  printf("min=%.9f, max=%.9f\n", mn, mx);
-#endif
-}
-
-float_t sqr(float_t a) {
+float_t sqr(const float_t a) {
   return a * a;
-}
-
-float_t source_function_coord(int i, int j, int n, const float_t SY) {
-  if (j != SX || i != SY) {
-    return 0;
-  }
-  float_t arg = twoPiF0 * (n * tau - t0);
-  return expf(-sqr(arg) / gammaSqr) * sinf(arg);
 }
 
 float_t** create(int ny, int nx) {
@@ -171,5 +140,5 @@ float_t** calc_P(int ny, int nx) {
       ;
     }
   }
-  return arr;  // задать матрицей
+  return arr;
 }
