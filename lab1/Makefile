@@ -3,7 +3,7 @@ SRCDIR=src
 CC=clang
 OPT_LEVEL=
 PROFILE_OPTIONS=
-CFLAGS=-std=c11 -Wall $(OPT_LEVEL) $(PROFILE_OPTIONS)
+CFLAGS=-std=c99 -Wall $(OPT_LEVEL) $(PROFILE_OPTIONS)
 LDFLAGS=-lm
 SOURCES=lab1.c
 OBJECTS=$(addprefix $(BUILDDIR)/,$(SOURCES:.c=.o))
@@ -17,8 +17,8 @@ $(BUILDDIR):
 $(EXECUTABLE): $(OBJECTS)
 	$(CC) $(CFLAGS) $(OBJECTS) -o $@ $(LDFLAGS)
 
-$(BUILDDIR)/%.o: $(SRCDIR)/%.c  
-	$(CC) $(CFLAGS) -I./$(SRCDIR) $^ -c -o $@ $(LDFLAGS) 
+$(BUILDDIR)/%.o: $(SRCDIR)/%.c
+	$(CC) $(CFLAGS) -I./$(SRCDIR) $^ -c -o $@
 	
 clean:
 	rm -rf $(OBJECTS) $(EXECUTABLE)
