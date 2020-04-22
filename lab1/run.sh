@@ -5,7 +5,7 @@ NUMBER_X_POINT=600
 NUMBER_Y_POINT=600
 STEPS=1500
 OPT_LEVEL="-O0"
-PERF_EVENT="branch-misses,L1-dcache-load-misses,LLC-load-misses,cycles"
+PERF_EVENT="branch-misses,L1-dcache-load-misses,LLC-load-misses,cycles,instructions:u"
 PROFILE_RUN=false
 function print_input() {
 echo "Grid: ${NUMBER_X_POINT}x${NUMBER_Y_POINT} Steps:$STEPS"
@@ -14,7 +14,7 @@ function plot_picture() {
 	gnuplot plot_test_png.p
 }
 
-make OPT_LEVEL=$OPT_LEVEL DEBUG_MODE="-DDEBUG_MODE" rebuild
+make OPT_LEVEL=$OPT_LEVEL DEBUG_MODE="-DDEBUG" rebuild
 if [ ! -d $RESULTS_DIR ]; then
 	mkdir $RESULTS_DIR
 fi	
@@ -59,7 +59,7 @@ if [[ $PROFILE_RUN == true ]]; then
 	STEPS=100
 	echo "Perf run: collecting $PERF_EVENT"
 	echo "Grid: ${NUMBER_X_POINT}x${NUMBER_Y_POINT} Steps:$STEPS"
-	sudo perf record -e $PERF_EVENT ../$EXE $NUMBER_X_POINT $NUMBER_Y_POINT $STEPS
+	perf record -e $PERF_EVENT ../$EXE $NUMBER_X_POINT $NUMBER_Y_POINT $STEPS
 fi
 
 
