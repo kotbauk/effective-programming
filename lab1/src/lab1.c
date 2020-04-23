@@ -28,7 +28,7 @@ const float_t t0twoPi = t0 * 2 * M_PI;
 
 float_t* create(int ny, int nx);
 float_t* calc_P(int ny, int nx);
-float_t sqr(const float_t a);
+__attribute__((always_inline)) inline float_t sqr(const float_t a);
 int main(int argc, const char* argv[]) {
   const uint32_t NX = atoi(argv[1]);
   const uint32_t NY = atoi(argv[2]);
@@ -119,7 +119,7 @@ int main(int argc, const char* argv[]) {
   return 0;
 }
 
-float_t sqr(const float_t a) {
+__attribute__((always_inline)) inline float_t sqr(const float_t a) {
   return a * a;
 }
 
