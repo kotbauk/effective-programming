@@ -1,11 +1,11 @@
-#!/bin/sh
+#!/bin/bash
 EXE=lab1
 RESULTS_DIR=results
 NUMBER_X_POINT=100
 NUMBER_Y_POINT=100
 STEPS=5000
 OPT_LEVEL="-O1"
-PERF_EVENT="branch-misses,L1-dcache-load-misses,LLC-load-misses,cycles"
+PERF_EVENT="branch-misses,L1-dcache-load-misses,LLC-load-misses,cycles,instructions,cache-misses"
 PROFILE_RUN=false
 function print_input() {
 echo "Grid: ${NUMBER_X_POINT}x${NUMBER_Y_POINT} Steps:$STEPS"
@@ -60,6 +60,7 @@ if [[ $PROFILE_RUN == true ]]; then
 	echo "Perf run: collecting $PERF_EVENT"
 	echo "Grid: ${NUMBER_X_POINT}x${NUMBER_Y_POINT} Steps:$STEPS"
 	sudo perf record -e $PERF_EVENT ../$EXE $NUMBER_X_POINT $NUMBER_Y_POINT $STEPS 
+	sudo perf stat -e $PERF_EVENT ../$EXE $NUMBER_X_POINT $NUMBER_Y_POINT $STEPS
 fi
 
 
