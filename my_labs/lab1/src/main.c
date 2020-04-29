@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-
+#include "inline_function.h"
 #include "my_matrix.h"
 #define DELTA_OUTPUT_FILE "delta_file.out"
 #define RESULTS_FILE "results_matrix.bin"
@@ -32,7 +32,9 @@ modeling_area init_modeling_area(const my_float_t begin_x,
                                  const my_float_t end_y,
                                  const size_t number_x_points,
                                  const size_t number_y_points);
-my_matrix_t* compute_po(my_matrix_t* po_matrix, const modeling_area mod_area);
+my_matrix_t* compute_po(my_matrix_t* po_matrix,
+                        my_matrix_t* temp_matrix,
+                        const modeling_area mod_area);
 my_matrix_t* compute_results(my_matrix_t* results_matrix,
                              my_matrix_t* temp_matrix,
                              const my_matrix_t* po_matrix,
@@ -47,7 +49,7 @@ int main(int argc, const char* argv[]) {
   const size_t matrix_size =
       (mod_area.number_x_points) * (mod_area.number_y_points);
 
-  my_float_t* matrixes_buffers = calloc(3 * (matrix_size), sizeof(my_float_t));
+  my_float_t* matrixes_buffers = calloc(4 * (matrix_size), sizeof(my_float_t));
   my_matrix_t* result_matrix = matrix_init(
       matrixes_buffers, mod_area.number_x_points, mod_area.number_y_points);
   my_matrix_t* po_matrix =
@@ -57,7 +59,7 @@ int main(int argc, const char* argv[]) {
       matrix_init(matrixes_buffers + 2 * matrix_size, mod_area.number_x_points,
                   mod_area.number_y_points);
 
-  po_matrix = compute_po(po_matrix, mod_area);
+  po_matrix = compute_po(po_matrix, temp_matrix, mod_area);
   FILE* results_file = fopen(RESULTS_FILE, "wb");
   print_matrix_bin_format(compute_results(result_matrix, temp_matrix, po_matrix,
                                           steps_numbers, mod_area),
@@ -112,38 +114,48 @@ my_float_t compute_po_in_point(my_float_t xj,
 }
 
 my_matrix_t* compute_po(my_matrix_t* po_matrix,
+                        my_matrix_t* temp_matrix,
                         const struct modeling_area mod_area) {
   const my_float_t ys1 =
-      mod_area.begin_y + ((2. / 3) * mod_area.lenght_of_y_segment);
-  const my_float_t ys2 = mod_area.begin_y + (mod_area.lenght_of_y_segment) / 3;
-  const my_float_t xs1 = mod_area.begin_x + (mod_area.lenght_of_x_segment) / 3;
+      mod_area.begin_y + ((2. / 3.) * mod_area.lenght_of_y_segment);
+  const my_float_t ys2 = mod_area.begin_y + (mod_area.lenght_of_y_segment) / 3.;
+  const my_float_t xs1 = mod_area.begin_x + (mod_area.lenght_of_x_segment) / 3.;
   const my_float_t xs2 =
-      mod_area.begin_x + ((2. / 3) * mod_area.lenght_of_x_segment);
+      mod_area.begin_x + ((2. / 3.) * mod_area.lenght_of_x_segment);
   const my_float_t sqr_r =
       0.01 * fmin(mod_area.lenght_of_x_segment, mod_area.lenght_of_y_segment) *
       fmin(mod_area.lenght_of_x_segment, mod_area.lenght_of_y_segment);
-  for (size_t i = 0; i < po_matrix->y_dim_size; ++i) {
-    for (size_t j = 0; j < po_matrix->x_dim_size; ++j) {
-      set_matrix_value(po_matrix, i, j,
+  for (size_t i = 0; i < temp_matrix->y_dim_size; ++i) {
+    for (size_t j = 0; j < temp_matrix->x_dim_size; ++j) {
+      set_matrix_value(temp_matrix, i, j,
                        compute_po_in_point(mod_area.begin_x + j * mod_area.hx,
                                            mod_area.begin_y + i * mod_area.hy,
                                            xs1, xs2, ys1, ys2, sqr_r));
     }
   }
 
+  for (size_t i = 0; i < po_matrix->y_dim_size; ++i) {
+    for (size_t j = 0; j < po_matrix->x_dim_size; ++j) {
+      set_matrix_value(po_matrix, i, j,
+                       2. * get_matrix_value(temp_matrix, i, j) +
+                           0.25 * (get_matrix_value(temp_matrix, i - 1, j) +
+                                   get_matrix_value(temp_matrix, i + 1, j) +
+                                   get_matrix_value(temp_matrix, i, j - 1) +
+                                   get_matrix_value(temp_matrix, i, j + 1)));
+    }
+  }
+
   return po_matrix;
 }
-my_float_t sqr_hx;
-my_float_t sqr_hy;
-my_float_t sum_of_sqr_h;
-my_float_t first_multiplier;
-my_float_t second_multiplier;
-my_float_t third_multiplier;
-my_float_t fourth_multiplier;
-my_float_t compute_function_in_point(const my_matrix_t* results_matrix,
-                                     const my_matrix_t* po_matrix,
-                                     const uint32_t i,
-                                     const uint32_t j) {
+inline my_float_t __attribute__((__always_inline__))
+compute_function_in_point(const my_matrix_t* results_matrix,
+                          const my_matrix_t* po_matrix,
+                          const uint32_t i,
+                          const uint32_t j,
+                          const my_float_t first_multiplier,
+                          const my_float_t second_multiplier,
+                          const my_float_t third_multiplier,
+                          const my_float_t fourth_multiplier) {
   return first_multiplier *
          (second_multiplier * (get_matrix_value(results_matrix, i, j - 1) +
                                get_matrix_value(results_matrix, i, j + 1)) +
@@ -153,11 +165,7 @@ my_float_t compute_function_in_point(const my_matrix_t* results_matrix,
                                get_matrix_value(results_matrix, i - 1, j + 1) +
                                get_matrix_value(results_matrix, i + 1, j - 1) +
                                get_matrix_value(results_matrix, i + 1, j + 1)) +
-          2. * get_matrix_value(po_matrix, i, j) +
-          0.25 * (get_matrix_value(po_matrix, i - 1, j) +
-                  get_matrix_value(po_matrix, i + 1, j) +
-                  get_matrix_value(po_matrix, i, j - 1) +
-                  get_matrix_value(po_matrix, i, j + 1)));
+          get_matrix_value(po_matrix, i, j));
 }
 
 my_matrix_t* compute_results(my_matrix_t* results_matrix,
@@ -168,13 +176,13 @@ my_matrix_t* compute_results(my_matrix_t* results_matrix,
 #ifdef DEBUG_MODE
   FILE* delta_output_file = fopen(DELTA_OUTPUT_FILE, "w");
 #endif
-  sqr_hx = mod_area.hx * mod_area.hx;
-  sqr_hy = mod_area.hy * mod_area.hy;
-  sum_of_sqr_h = 1 / sqr_hx + 1 / sqr_hy;
-  first_multiplier = 0.2 / sum_of_sqr_h;
-  second_multiplier = (2.5 / sqr_hx - 0.5 / sqr_hy);
-  third_multiplier = (2.5 / sqr_hy - 0.5 / sqr_hx);
-  fourth_multiplier = 0.25 * (sum_of_sqr_h);
+  const my_float_t sqr_hx = mod_area.hx * mod_area.hx;
+  const my_float_t sqr_hy = mod_area.hy * mod_area.hy;
+  const my_float_t sum_of_sqr_h = 1 / sqr_hx + 1 / sqr_hy;
+  const my_float_t first_multiplier = 0.2 / sum_of_sqr_h;
+  const my_float_t second_multiplier = (2.5 / sqr_hx - 0.5 / sqr_hy);
+  const my_float_t third_multiplier = (2.5 / sqr_hy - 0.5 / sqr_hx);
+  const my_float_t fourth_multiplier = 0.25 * (sum_of_sqr_h);
 #ifdef DEBUG_MODE
   my_float_t max_delta = .0;
   my_float_t temp_delta = .0;
@@ -184,7 +192,9 @@ my_matrix_t* compute_results(my_matrix_t* results_matrix,
       for (size_t j = 1; j < mod_area.max_j; ++j) {
         set_matrix_value(
             temp_matrix, i, j,
-            compute_function_in_point(results_matrix, po_matrix, i, j));
+            compute_function_in_point(results_matrix, po_matrix, i, j,
+                                      first_multiplier, second_multiplier,
+                                      third_multiplier, fourth_multiplier));
 #ifdef DEBUG_MODE
         temp_delta = fabs(get_matrix_value(temp_matrix, i, j) -
                           get_matrix_value(results_matrix, i, j));

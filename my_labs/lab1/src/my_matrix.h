@@ -27,4 +27,5 @@ my_float_t* get_matrix_buffer(const my_matrix_t* matrix);
 
 void print_matrix_bin_format(const my_matrix_t* matrix, FILE* output_file);
 void print_matrix_txt_format(const my_matrix_t* matrix, FILE* output_file);
+
 #endif

@@ -25,24 +25,6 @@ my_matrix_t* set_matrix_buf(my_matrix_t* matrix, my_float_t* new_buf) {
   return matrix;
 }
 
-static my_float_t* at_matrix_value(const my_matrix_t* matrix,
-                            const size_t i,
-                            const size_t j) {
-  return matrix->matrix_buf + (j + i * matrix->x_dim_size);
-}
-
-void set_matrix_value(my_matrix_t* matrix,
-                      const size_t i,
-                      const size_t j,
-                      const my_float_t val) {
-  *at_matrix_value(matrix, i, j) = val;
-}
-my_float_t get_matrix_value(const my_matrix_t* matrix,
-                            const size_t i,
-                            const size_t j) {
-	return *at_matrix_value(matrix,i,j);
-}
-
 my_float_t* get_matrix_buffer(const my_matrix_t* matrix) {
 	return matrix->matrix_buf;
 }
@@ -54,11 +36,11 @@ void print_matrix_bin_format(const my_matrix_t* matrix, FILE* output_file) {
            sizeof(my_float_t), matrix->x_dim_size, output_file);
   }
 }
-void print_matrix(const my_matrix_t* matrix, FILE* output_file) {
-  for (size_t i = 0; i < matrix->y_dim_size; ++i) {
-    for (size_t j = 0; j < matrix->x_dim_size; ++j) {
-      fprintf(output_file, "%f|", get_matrix_value(matrix, i, j));
-    }
-    fprintf(output_file, "\n");
-  }
-}
+/*[>void print_matrix(const my_matrix_t* matrix, FILE* output_file) {<]*/
+  /*[>for (size_t i = 0; i < matrix->y_dim_size; ++i) {<]*/
+    /*[>for (size_t j = 0; j < matrix->x_dim_size; ++j) {<]*/
+      /*[>fprintf(output_file, "%f|", get_matrix_value(matrix, i, j));<]*/
+    /*[>}<]*/
+    /*[>fprintf(output_file, "\n");<]*/
+  /*[>}<]*/
+/*}*/

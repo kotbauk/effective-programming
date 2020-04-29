@@ -1,11 +1,11 @@
-#!/bin/sh
+#!/bin/bash
 EXE=lab1
 RESULTS_DIR=results
 NUMBER_X_POINT=100
 NUMBER_Y_POINT=100
 STEPS=5000
-OPT_LEVEL="-O1"
-PERF_EVENT="branch-misses,L1-dcache-load-misses,LLC-load-misses,instructions,cycles,cache-misses"
+OPT_LEVEL="-O3 -march=native"
+PERF_EVENT="branch-misses,L1-dcache-load-misses,LLC-load-misses,cycles,instructions,cache-misses"
 PROFILE_RUN=false
 function print_input() {
 echo "Grid: ${NUMBER_X_POINT}x${NUMBER_Y_POINT} Steps:$STEPS"
@@ -14,7 +14,7 @@ function plot_picture() {
 	gnuplot plot_test_png.p 
 }
 
-make OPT_LEVEL=$OPT_LEVEL DEBUG_MODE="-DDEBUG_MODE" rebuild
+make OPT_LEVEL="$OPT_LEVEL" DEBUG_MODE="-DDEBUG_MODE" rebuild
 if [ ! -d $RESULTS_DIR ]; then
 	mkdir $RESULTS_DIR
 fi	
@@ -26,7 +26,7 @@ echo "Test picture ploting"
 plot_picture
 
 cd -
-make OPT_LEVEL=$OPT_LEVEL rebuild
+make OPT_LEVEL="$OPT_LEVEL" rebuild
 cd $RESULTS_DIR
 
 echo "Performance run"
@@ -41,7 +41,7 @@ if [[ $PROFILE_RUN == true ]]; then
 	NUMBER_Y_POINT=5000
 	STEPS=100
 	cd -
-	make OPT_LEVEL=$OPT_LEVEL PROFILE_OPTIONS="-g -pg" rebuild
+	make OPT_LEVEL="$OPT_LEVEL" PROFILE_OPTIONS="-g -pg" rebuild
 	cd $RESULTS_DIR
 	echo "Gprof run"
 	echo "Grid: ${NUMBER_X_POINT}x${NUMBER_Y_POINT} Steps:$STEPS"
@@ -52,7 +52,7 @@ if [[ $PROFILE_RUN == true ]]; then
 	gprof -A ../$EXE > ${EXE}.source.txt
 
 	cd -
-	make OPT_LEVEL=$OPT_LEVEL PROFILE_OPTIONS="-ggdb" rebuild
+	make OPT_LEVEL="$OPT_LEVEL" PROFILE_OPTIONS="-ggdb" rebuild
 	cd $RESULTS_DIR
 	NUMBER_X_POINT=5000
 	NUMBER_Y_POINT=5000
