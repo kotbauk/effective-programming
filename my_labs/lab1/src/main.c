@@ -32,7 +32,9 @@ modeling_area init_modeling_area(const my_float_t begin_x,
                                  const my_float_t end_y,
                                  const size_t number_x_points,
                                  const size_t number_y_points);
-my_matrix_t* compute_po(my_matrix_t* po_matrix, const modeling_area mod_area);
+my_matrix_t* compute_po(my_matrix_t* po_matrix,
+                        my_matrix_t* temp_matrix,
+                        const modeling_area mod_area);
 my_matrix_t* compute_results(my_matrix_t* results_matrix,
                              my_matrix_t* temp_matrix,
                              const my_matrix_t* po_matrix,
@@ -47,7 +49,7 @@ int main(int argc, const char* argv[]) {
   const size_t matrix_size =
       (mod_area.number_x_points) * (mod_area.number_y_points);
 
-  my_float_t* matrixes_buffers = calloc(3 * (matrix_size), sizeof(my_float_t));
+  my_float_t* matrixes_buffers = calloc(4 * (matrix_size), sizeof(my_float_t));
   my_matrix_t* result_matrix = matrix_init(
       matrixes_buffers, mod_area.number_x_points, mod_area.number_y_points);
   my_matrix_t* po_matrix =
@@ -57,7 +59,7 @@ int main(int argc, const char* argv[]) {
       matrix_init(matrixes_buffers + 2 * matrix_size, mod_area.number_x_points,
                   mod_area.number_y_points);
 
-  po_matrix = compute_po(po_matrix, mod_area);
+  po_matrix = compute_po(po_matrix, temp_matrix, mod_area);
   FILE* results_file = fopen(RESULTS_FILE, "wb");
   print_matrix_bin_format(compute_results(result_matrix, temp_matrix, po_matrix,
                                           steps_numbers, mod_area),
@@ -112,22 +114,34 @@ my_float_t compute_po_in_point(my_float_t xj,
 }
 
 my_matrix_t* compute_po(my_matrix_t* po_matrix,
+                        my_matrix_t* temp_matrix,
                         const struct modeling_area mod_area) {
   const my_float_t ys1 =
-      mod_area.begin_y + ((2. / 3) * mod_area.lenght_of_y_segment);
-  const my_float_t ys2 = mod_area.begin_y + (mod_area.lenght_of_y_segment) / 3;
-  const my_float_t xs1 = mod_area.begin_x + (mod_area.lenght_of_x_segment) / 3;
+      mod_area.begin_y + ((2. / 3.) * mod_area.lenght_of_y_segment);
+  const my_float_t ys2 = mod_area.begin_y + (mod_area.lenght_of_y_segment) / 3.;
+  const my_float_t xs1 = mod_area.begin_x + (mod_area.lenght_of_x_segment) / 3.;
   const my_float_t xs2 =
-      mod_area.begin_x + ((2. / 3) * mod_area.lenght_of_x_segment);
+      mod_area.begin_x + ((2. / 3.) * mod_area.lenght_of_x_segment);
   const my_float_t sqr_r =
       0.01 * fmin(mod_area.lenght_of_x_segment, mod_area.lenght_of_y_segment) *
       fmin(mod_area.lenght_of_x_segment, mod_area.lenght_of_y_segment);
-  for (size_t i = 0; i < po_matrix->y_dim_size; ++i) {
-    for (size_t j = 0; j < po_matrix->x_dim_size; ++j) {
-      set_matrix_value(po_matrix, i, j,
+  for (size_t i = 0; i < temp_matrix->y_dim_size; ++i) {
+    for (size_t j = 0; j < temp_matrix->x_dim_size; ++j) {
+      set_matrix_value(temp_matrix, i, j,
                        compute_po_in_point(mod_area.begin_x + j * mod_area.hx,
                                            mod_area.begin_y + i * mod_area.hy,
                                            xs1, xs2, ys1, ys2, sqr_r));
+    }
+  }
+
+  for (size_t i = 0; i < po_matrix->y_dim_size; ++i) {
+    for (size_t j = 0; j < po_matrix->x_dim_size; ++j) {
+      set_matrix_value(po_matrix, i, j,
+                       2. * get_matrix_value(temp_matrix, i, j) +
+                           0.25 * (get_matrix_value(temp_matrix, i - 1, j) +
+                                   get_matrix_value(temp_matrix, i + 1, j) +
+                                   get_matrix_value(temp_matrix, i, j - 1) +
+                                   get_matrix_value(temp_matrix, i, j + 1)));
     }
   }
 
@@ -151,11 +165,7 @@ compute_function_in_point(const my_matrix_t* results_matrix,
                                get_matrix_value(results_matrix, i - 1, j + 1) +
                                get_matrix_value(results_matrix, i + 1, j - 1) +
                                get_matrix_value(results_matrix, i + 1, j + 1)) +
-          2. * get_matrix_value(po_matrix, i, j) +
-          0.25 * (get_matrix_value(po_matrix, i - 1, j) +
-                  get_matrix_value(po_matrix, i + 1, j) +
-                  get_matrix_value(po_matrix, i, j - 1) +
-                  get_matrix_value(po_matrix, i, j + 1)));
+          get_matrix_value(po_matrix, i, j));
 }
 
 my_matrix_t* compute_results(my_matrix_t* results_matrix,
