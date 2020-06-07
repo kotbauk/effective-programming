@@ -19,7 +19,7 @@ $(BUILDDIR):
 $(EXECUTABLE): $(OBJECTS) $(BUILDDIR)
 	$(CC) $(CFLAGS) $(OBJECTS) -o $@ $(LDFLAGS)
 
-$(BUILDDIR)/%.o: $(SRCDIR)/%.c 
+$(BUILDDIR)/%.o: $(SRCDIR)/%.c
 	$(CC) $(CFLAGS) -I./$(SRCDIR) $(DEBUG_MODE) $^ -c -o $@
 	
 clean:
