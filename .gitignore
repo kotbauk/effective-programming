@@ -50,3 +50,9 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+**/build/
+*.bin
+*.txt
+*.annotation
+*.png
+*.clang-format
