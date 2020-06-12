@@ -55,6 +55,7 @@ float_t sqr(const float_t a);
  */
 /* (a, b, c, d, e, f, g, h)  (a2, b2, c2, d2, e2, f2, g2, h2)->
  * (h, a2, b2, c2, d2, e2, f2, g2) */
+//Шагает в лево относительно второго вектора
 __m256 get_left_vector(__m256 a, __m256 b) {
   float temp_vec[8];
   _mm256_store_ps(temp_vec, _mm256_permute_ps(_mm256_blend_ps(a, b, 0b01111111),
@@ -67,6 +68,7 @@ __m256 get_left_vector(__m256 a, __m256 b) {
  */
 /* (a, b, c, d, e, f, g, h)  (a2, b2, c2, d2, e2, f2, g2, h2)->
  * (b, c, d, e, f, g, a2) */
+//В право относительно 1
 __m256 get_right_vector(__m256 a, __m256 b) {
   float temp_vec[8];
   _mm256_store_ps(temp_vec, _mm256_permute_ps(_mm256_blend_ps(a, b, 0b00000001),
@@ -203,9 +205,8 @@ void compute_one_matrix_line(float_t* dst_U_matrix,
       right_border_elem = unborder_filler;
     }
     __m256 border_mask = _mm256_set_ps(
-        left_border_elem, unborder_filler, unborder_filler, unborder_filler,
-        unborder_filler, unborder_filler, unborder_filler, right_border_elem);
-
+        right_border_elem, unborder_filler, unborder_filler, unborder_filler,
+        unborder_filler, unborder_filler, unborder_filler, left_border_elem);
     __m256 vec_U_left_val =
         _mm256_and_ps(get_left_vector(vec_U_prev, vec_U_mid), border_mask);
     __m256 vec_U_right_val =
@@ -232,6 +233,7 @@ void compute_one_matrix_line(float_t* dst_U_matrix,
         vec_HYdeg2mul2);
     *U_dst = _mm256_fmadd_ps(vec_tauSqr, _mm256_add_ps(vec_first, vec_second),
                              _mm256_fmsub_ps(vec_two, vec_U_mid, *U_dst));
+
     ++U_cur;
     ++vec_U_upper;
     ++vec_U_lower;
